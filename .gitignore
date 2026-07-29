@@ -1,0 +1,53 @@
+# Entornos virtuales
+.venv/
+venv/
+env/
+
+# Caché Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# Streamlit / sistema
+.streamlit/secrets.toml
+.DS_Store
+Thumbs.db
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Datasets y archivos grandes
+datasets/
+data/
+USU-Corn-WeedDB/
+weedsgalore/
+weedsgalore-orthomosaic/
+*.zip
+*.rar
+*.7z
+*.tar
+*.gz
+*.tif
+*.tiff
+
+# Resultados generados
+resultados/
+outputs/
+salidas/
+runs/
+*.xlsx
+*.csv
+#*.txt
+*.png
+*.jpg
+*.jpeg
+
+# Modelos pesados
+# Si tu modelo pesa menos de 100 MB puedes quitar esta línea.
+#*.pt
+*.pth
+*.onnx
+
+# Logs
+*.log
