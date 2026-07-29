@@ -32,9 +32,6 @@ mvp_malezas/
 │   ├── infestacion.py
 │   ├── visualizacion.py
 │   └── ortomosaico.py
-└── notebooks/
-    ├── 01_descargar_usu_crear_mosaicos.ipynb
-    └── 02_descargar_weedsgalore_ortomosaicos.ipynb
 ```
 
 ## Instalación
