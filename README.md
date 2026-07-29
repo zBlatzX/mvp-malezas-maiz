@@ -14,7 +14,10 @@ El sistema está pensado como una herramienta de apoyo para agricultura de preci
 - Generación de mapa preliminar de infestación.
 - Zoom automático del sector prioritario.
 - Tabla de sectores con nivel de infestación y recomendación.
+- Estimación de área y densidad cuando se indica una resolución espacial aproximada.
 - Exportación de resultados a CSV, Excel y TXT.
+- Notebooks de apoyo para descargar datasets y generar mosaicos de prueba.
+- Script auxiliar para crear recortes pequeños de ortomosaicos GeoTIFF.
 
 ## Estructura del repositorio
 
@@ -32,9 +35,11 @@ mvp_malezas/
 │   ├── infestacion.py
 │   ├── visualizacion.py
 │   └── ortomosaico.py
-└── notebooks/
-    ├── 01_descargar_usu_crear_mosaicos_pc.ipynb
-    └── 02_descargar_weedsgalore_ortomosaicos_pc.ipynb
+├── notebooks/
+│   ├── 01_descargar_usu_crear_mosaicos_pc.ipynb
+│   └── 02_descargar_weedsgalore_ortomosaicos_pc.ipynb
+└── test/
+    └── crear_ortomosaico_pequeño.py
 ```
 
 ## Instalación
@@ -116,6 +121,15 @@ permite descargar los ortomosaicos en Google Colab y luego descargarlos al compu
 
 Debido al tamaño de los archivos GeoTIFF, también se recomienda la descarga directa desde el computador cuando sea necesario.
 
+Para la demostración se recomienda comenzar con:
+
+```text
+2023-06-06_om.tif
+2023-05-30_om.tif
+```
+
+Estos fueron los archivos que se trabajaron de forma más estable durante las pruebas.
+
 ## Notebooks de descarga
 
 Los notebooks incluidos no guardan archivos en Google Drive. Utilizan el almacenamiento temporal de Google Colab (`/content`) y al final descargan los archivos generados al computador.
@@ -148,14 +162,39 @@ Este notebook realiza las siguientes acciones:
 3. Permite descargar los `.tif` al computador.
 4. Incluye una alternativa con PowerShell para descargar directamente desde Windows.
 
-Para la demostración se recomienda comenzar con:
+## Script auxiliar para ortomosaicos pequeños
+
+La carpeta `test/` contiene el script:
 
 ```text
-2023-06-06_om.tif
-2023-05-30_om.tif
+test/crear_ortomosaico_pequeño.py
 ```
 
-Estos fueron los archivos que se trabajaron de forma más estable durante las pruebas.
+Este script se utiliza como apoyo para crear un recorte más pequeño de un ortomosaico GeoTIFF grande. Su objetivo es facilitar pruebas locales, demostraciones o validaciones rápidas sin tener que procesar siempre un archivo completo de varios GB.
+
+Este script no forma parte del flujo principal de la aplicación Streamlit. Es una herramienta auxiliar para preparar archivos de prueba.
+
+Uso general:
+
+```powershell
+python test/crear_ortomosaico_pequeño.py
+```
+
+Antes de ejecutarlo, se deben revisar las rutas configuradas dentro del archivo, por ejemplo:
+
+```text
+RUTA_ORIGINAL
+RUTA_SALIDA
+```
+
+El archivo generado puede usarse luego en la aplicación seleccionando:
+
+```text
+Tipo de entrada: Ortomosaico
+Forma de cargar el ortomosaico: Ruta local GeoTIFF
+```
+
+Importante: los ortomosaicos o recortes `.tif` generados por este script no deberían subirse al repositorio, ya que pueden ser archivos pesados. Estos archivos deben mantenerse de forma local.
 
 ## Ejecución de la aplicación
 
@@ -239,12 +278,44 @@ Medio: 75
 
 Estos valores no representan una recomendación agronómica definitiva. Sirven para organizar visualmente los sectores y priorizar la revisión.
 
+## Resultados de referencia
+
+Durante las pruebas del proyecto se entrenaron y compararon los modelos YOLOv8n y YOLOv8s. El modelo YOLOv8s obtuvo el mejor desempeño general:
+
+```text
+Modelo     Precisión   Recall   mAP@0.5   mAP@0.5:0.95
+YOLOv8n    0,729       0,762    0,806     0,460
+YOLOv8s    0,763       0,773    0,837     0,486
+```
+
+En una prueba con mosaico de imágenes se obtuvieron:
+
+```text
+405 detecciones
+87 sectores con presencia
+grilla 10×10
+```
+
+En una prueba funcional con el ortomosaico `2023-06-06_om.tif` de WeedsGalore se obtuvieron:
+
+```text
+624 ventanas procesadas
+253 detecciones antes de eliminar duplicados
+238 detecciones finales
+área aproximada: 52056,34 m²
+densidad estimada: 0,005 malezas/m²
+sector más afectado: F6-C4
+```
+
+Estos resultados deben interpretarse como una validación funcional del flujo. En el caso de WeedsGalore, se observaron detecciones incompletas debido al cambio de dominio entre el dataset utilizado para entrenar el modelo y el ortomosaico usado para probar el procesamiento.
+
 ## Consideraciones importantes
 
 - El modelo fue entrenado con USU-Corn-WeedDB.
 - Los ortomosaicos de WeedsGalore se usaron para validar funcionalmente el procesamiento de GeoTIFF.
 - Como son datasets distintos, puede existir cambio de dominio.
 - El cambio de dominio puede afectar las detecciones debido a diferencias de especies, escala, resolución, iluminación, suelo y condiciones visuales.
+- Algunas malezas observadas en el ortomosaico presentaban una forma más fina o puntiaguda, lo que pudo afectar la detección del modelo. Esta observación corresponde a una inferencia visual y no a una validación cuantitativa definitiva.
 - Los resultados en WeedsGalore no deben interpretarse como una validación agronómica definitiva.
 - Para uso real en Arica u otra zona local, se recomienda capturar imágenes propias y realizar fine-tuning del detector.
 - El sistema entrega apoyo visual y tabular, pero no reemplaza una evaluación agronómica en terreno.
@@ -268,7 +339,7 @@ __pycache__/
 
 Estos archivos pueden ser muy pesados o depender del computador local.
 
-El repositorio debe contener el código, la documentación, los notebooks y los archivos necesarios para reproducir el entorno.
+El repositorio debe contener el código, la documentación, los notebooks, el script auxiliar y los archivos necesarios para reproducir el entorno.
 
 ## Trabajo futuro
 
