@@ -16,7 +16,7 @@ El sistema está pensado como una herramienta de apoyo para agricultura de preci
 - Tabla de sectores con nivel de infestación y recomendación.
 - Exportación de resultados a CSV, Excel y TXT.
 
-## Estructura sugerida del repositorio
+## Estructura del repositorio
 
 ```text
 mvp_malezas/
@@ -32,6 +32,9 @@ mvp_malezas/
 │   ├── infestacion.py
 │   ├── visualizacion.py
 │   └── ortomosaico.py
+└── notebooks/
+    ├── 01_descargar_usu_crear_mosaicos_pc.ipynb
+    └── 02_descargar_weedsgalore_ortomosaicos_pc.ipynb
 ```
 
 ## Instalación
@@ -71,27 +74,88 @@ rasterio
 
 ## Modelo entrenado
 
-El modelo debe estar en:
+El modelo entrenado debe estar en:
 
 ```text
 modelo/best_yolov8s.pt
 ```
 
-Si el archivo pesa más de 100 MB, no se recomienda subirlo directamente a GitHub. En ese caso se puede usar Git LFS, Google Drive, OneDrive o Zenodo, y dejar la ruta o enlace en el README.
+Este archivo corresponde al modelo YOLOv8 ajustado para la detección de malezas.
+
+Si el archivo pesa más de 100 MB, no se recomienda subirlo directamente a GitHub. En ese caso se puede usar Git LFS, Google Drive, OneDrive o Zenodo, y dejar la ruta o enlace de descarga en este README.
 
 ## Datasets utilizados
 
 ### USU-Corn-WeedDB
 
-Usado principalmente para entrenamiento y pruebas en el dominio del modelo. Contiene imágenes UAV RGB de maíz forrajero y anotaciones para malezas. En este proyecto se usó para entrenar YOLOv8.
+USU-Corn-WeedDB se utilizó principalmente para entrenamiento y pruebas en el dominio del modelo. Contiene imágenes UAV RGB de cultivos de maíz y anotaciones de malezas.
 
-El notebook `01_descargar_usu_crear_mosaicos.ipynb` permite descargar el dataset desde Zenodo y crear mosaicos artificiales con imágenes del dataset para probar la aplicación.
+En este proyecto se utilizó para entrenar YOLOv8. Las clases originales del dataset fueron tratadas como una clase general de maleza, ya que el objetivo del MVP era detectar presencia de malezas y representarlas por sectores.
+
+El notebook:
+
+```text
+notebooks/01_descargar_usu_crear_mosaicos_pc.ipynb
+```
+
+permite descargar el dataset en Google Colab, crear mosaicos artificiales con imágenes del dataset y descargar el resultado al computador.
+
+Los mosaicos generados no son ortomosaicos reales. Son imágenes grandes construidas a partir de parches del dataset, útiles para probar la aplicación con imágenes más amplias y cercanas al dominio usado para entrenar el modelo.
 
 ### WeedsGalore
 
-Usado principalmente para validar el flujo con ortomosaicos reales. Los ortomosaicos completos están en formato GeoTIFF y permiten probar el procesamiento por ventanas.
+WeedsGalore se utilizó principalmente para validar funcionalmente el procesamiento de ortomosaicos reales. Este dataset incluye ortomosaicos GeoTIFF de campos de maíz, lo que permite probar el flujo de lectura por ventanas en imágenes grandes.
 
-El notebook `02_descargar_weedsgalore_ortomosaicos.ipynb` permite descargar los ortomosaicos y extraer los archivos más convenientes para la demo.
+El notebook:
+
+```text
+notebooks/02_descargar_weedsgalore_ortomosaicos_pc.ipynb
+```
+
+permite descargar los ortomosaicos en Google Colab y luego descargarlos al computador.
+
+Debido al tamaño de los archivos GeoTIFF, también se recomienda la descarga directa desde el computador cuando sea necesario.
+
+## Notebooks de descarga
+
+Los notebooks incluidos no guardan archivos en Google Drive. Utilizan el almacenamiento temporal de Google Colab (`/content`) y al final descargan los archivos generados al computador.
+
+### Notebook 1: USU-Corn-WeedDB
+
+```text
+01_descargar_usu_crear_mosaicos_pc.ipynb
+```
+
+Este notebook realiza las siguientes acciones:
+
+1. Descarga USU-Corn-WeedDB.
+2. Descomprime el dataset.
+3. Busca imágenes del conjunto de entrenamiento, validación o prueba.
+4. Genera mosaicos artificiales de 5×5 y 10×10.
+5. Comprime los mosaicos en un archivo `.zip`.
+6. Descarga el `.zip` al computador.
+
+### Notebook 2: WeedsGalore
+
+```text
+02_descargar_weedsgalore_ortomosaicos_pc.ipynb
+```
+
+Este notebook realiza las siguientes acciones:
+
+1. Descarga el archivo de ortomosaicos de WeedsGalore.
+2. Extrae los GeoTIFF recomendados para pruebas.
+3. Permite descargar los `.tif` al computador.
+4. Incluye una alternativa con PowerShell para descargar directamente desde Windows.
+
+Para la demostración se recomienda comenzar con:
+
+```text
+2023-06-06_om.tif
+2023-05-30_om.tif
+```
+
+Estos fueron los archivos que se trabajaron de forma más estable durante las pruebas.
 
 ## Ejecución de la aplicación
 
@@ -111,25 +175,100 @@ Luego, desde la interfaz:
 
 ## Flujo real con dron
 
-En un escenario real, la aplicación parte desde un ortomosaico ya generado. Si solo se tienen fotografías individuales del dron, primero deben procesarse en un software de fotogrametría como WebODM, Agisoft Metashape, Pix4D u otro similar.
+En un escenario real, la aplicación parte desde un ortomosaico ya generado. Si solo se tienen fotografías individuales capturadas por un dron, primero deben procesarse en un software de fotogrametría, como WebODM, Agisoft Metashape, Pix4D u otro similar.
+
+El flujo recomendado es:
 
 ```text
 Captura UAV
 → procesamiento fotogramétrico externo
 → ortomosaico GeoTIFF
 → lectura por ventanas en la app
-→ YOLOv8
+→ detección con YOLOv8
+→ conteo por sectores
 → mapa de infestación
 → tabla / reporte
 ```
+
+La aplicación no construye el ortomosaico desde las fotografías originales. Su función es analizar imágenes ya disponibles u ortomosaicos GeoTIFF previamente generados.
+
+## Procesamiento por ventanas
+
+Los ortomosaicos pueden tener un tamaño muy grande, por lo que no se cargan completos en memoria.
+
+Para evitar problemas de rendimiento, la aplicación los divide en ventanas o recortes. Cada ventana se procesa con YOLOv8 y luego las detecciones se convierten nuevamente a coordenadas globales dentro del ortomosaico.
+
+Finalmente, las detecciones se agrupan en sectores para generar el mapa de infestación.
+
+En la aplicación, el tamaño de ventana puede configurarse como:
+
+```text
+640 × 640 píxeles
+768 × 768 píxeles
+1024 × 1024 píxeles
+```
+
+El solapamiento entre ventanas también puede ajustarse para reducir la pérdida de detecciones en los bordes de cada recorte.
+
+## Interpretación de niveles
+
+La aplicación clasifica los sectores según la cantidad de malezas detectadas:
+
+```text
+0 detecciones                  → Sin presencia
+1 hasta máximo bajo             → Baja presencia
+máximo bajo + 1 hasta medio     → Presencia media
+más del máximo medio            → Alta presencia
+```
+
+Los umbrales pueden ajustarse desde la interfaz.
+
+Para imágenes o mosaicos pequeños se recomiendan valores bajos, por ejemplo:
+
+```text
+Bajo: 2
+Medio: 5
+```
+
+Para ortomosaicos, donde los sectores pueden ser más grandes, se recomiendan valores más altos, por ejemplo:
+
+```text
+Bajo: 25
+Medio: 75
+```
+
+Estos valores no representan una recomendación agronómica definitiva. Sirven para organizar visualmente los sectores y priorizar la revisión.
 
 ## Consideraciones importantes
 
 - El modelo fue entrenado con USU-Corn-WeedDB.
 - Los ortomosaicos de WeedsGalore se usaron para validar funcionalmente el procesamiento de GeoTIFF.
-- Como son datasets distintos, puede existir cambio de dominio: especies, escala, resolución, iluminación y condiciones visuales diferentes.
-- Por eso, los resultados en WeedsGalore no deben interpretarse como una validación agronómica definitiva.
+- Como son datasets distintos, puede existir cambio de dominio.
+- El cambio de dominio puede afectar las detecciones debido a diferencias de especies, escala, resolución, iluminación, suelo y condiciones visuales.
+- Los resultados en WeedsGalore no deben interpretarse como una validación agronómica definitiva.
 - Para uso real en Arica u otra zona local, se recomienda capturar imágenes propias y realizar fine-tuning del detector.
+- El sistema entrega apoyo visual y tabular, pero no reemplaza una evaluación agronómica en terreno.
+
+## Archivos que no deben subirse al repositorio
+
+No se recomienda subir al repositorio:
+
+```text
+.venv/
+datasets/
+weedsgalore/
+USU-Corn-WeedDB/
+*.tif
+*.tiff
+*.zip
+runs/
+resultados/
+__pycache__/
+```
+
+Estos archivos pueden ser muy pesados o depender del computador local.
+
+El repositorio debe contener el código, la documentación, los notebooks y los archivos necesarios para reproducir el entorno.
 
 ## Trabajo futuro
 
@@ -139,3 +278,4 @@ Captura UAV
 - Evaluar segmentación para delimitar mejor las áreas de maleza.
 - Exportar coordenadas geográficas reales para apoyar recorridos o aplicación localizada.
 - Comparar resultados con anotaciones de terreno.
+- Integrar criterios agronómicos más precisos para definir umbrales de intervención.
